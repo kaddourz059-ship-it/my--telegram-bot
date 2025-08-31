@@ -4,7 +4,7 @@ from threading import Thread
 from flask import Flask, request
 
 # 1. Flask web server setup for webhook
-app = Flask(_name_)
+app = Flask(__name__)
 
 # This route handles all incoming updates from Telegram
 @app.route('/' + os.environ.get('BOT_TOKEN'), methods=['POST'])
