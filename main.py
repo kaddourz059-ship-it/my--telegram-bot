@@ -1,36 +1,18 @@
 import telebot
 import os
 from threading import Thread
-from flask import Flask
+from flask import Flask, request
 
-# 1. Flask web server setup to keep bot alive
-app = Flask('')
+# 1. Flask web server setup for webhook
+app = Flask(_name_)
 
-@app.route('/')
-def home():
-    user_count = len(get_all_user_ids()) if os.path.exists('user_ids.txt') else 0
-    return f'''
-    <html>
-    <head><title>Telegram Broadcast Bot</title></head>
-    <body>
-        <h1>🤖 Telegram Broadcast Bot</h1>
-        <p>✅ البوت يعمل حالياً</p>
-        <p>👥 عدد المستخدمين المسجلين: {user_count}</p>
-        <p>🕒 آخر تحديث: {os.popen('date').read().strip()}</p>
-    </body>
-    </html>
-    '''
-
-def run_flask():
-    """Run Flask server in background"""
-    app.run(host='0.0.0.0', port=5000, debug=False)
-
-def keep_alive():
-    """Start Flask server in a separate thread"""
-    t = Thread(target=run_flask)
-    t.daemon = True
-    t.start()
-    print("🌐 Flask web server started on port 5000")
+# This route handles all incoming updates from Telegram
+@app.route('/' + os.environ.get('BOT_TOKEN'), methods=['POST'])
+def webhook():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "OK", 200
 
 # 2. Setup token and admin ID
 # This code will read values from environment variables
@@ -111,7 +93,7 @@ def handle_voice_message(message):
     bot.reply_to(message, f"🎤 بدء عملية بث المقطع الصوتي إلى {len(user_ids)} مستخدم. يرجى الانتظار...")
     print(f"Starting voice broadcast to {len(user_ids)} users")
 
-    # Send voice message to all users
+# Send voice message to all users
     for user_id in user_ids:
         try:
             user_id = int(user_id.strip())
@@ -119,7 +101,9 @@ def handle_voice_message(message):
             sent_count += 1
             print(f"Successfully sent voice broadcast to user {user_id}")
         except Exception as e:
-            failed_count += 1
+
+Zaki Kd, [31-08-2025 9:25]
+failed_count += 1
             if "bot was blocked by the user" in str(e).lower():
                 print(f"User {user_id} has blocked the bot")
             else:
@@ -205,54 +189,23 @@ def handle_info_command(message):
     else:
         bot.reply_to(message, "هذا الأمر متاح للمدير فقط.")
 
-# Error handler for polling
-def error_handler():
-    """Handle polling errors"""
-    print("Bot polling stopped due to error. Attempting to restart...")
+Zaki Kd, [31-08-2025 9:25]
+# 13. Set webhook for Render deployment
+if name == 'main':
+    bot.delete_webhook() # Remove any existing webhook
+    print("Webhook deleted successfully.")
 
-# 13. Run the bot
-if __name__ == '__main__':
+    # Set new webhook to Render's URL
     try:
-        # Start Flask web server first
-        keep_alive()
+        render_url = os.environ.get('RENDER_EXTERNAL_URL')
+        if not render_url:
+            raise ValueError("RENDER_EXTERNAL_URL environment variable is not set.")
         
-        print("Starting Telegram Broadcast Bot...")
-        print(f"Bot Token: {'*' * 20}{BOT_TOKEN[-10:] if len(BOT_TOKEN) > 10 else 'NOT_SET'}")
-        print(f"Admin ID: {ADMIN_ID}")
+        webhook_url = render_url + '/' + BOT_TOKEN
+        bot.set_webhook(url=webhook_url)
+        print(f"Webhook set successfully to {webhook_url}")
+        print("Bot is running on the web server!")
         
-        # Print Replit URL
-        repl_url = os.environ.get('REPLIT_URL', 'URL not available')
-        if repl_url != 'URL not available':
-            print(f"🌐 Replit URL: {repl_url}")
-        else:
-            # Try to construct URL from other environment variables
-            repl_slug = os.environ.get('REPL_SLUG', '')
-            repl_owner = os.environ.get('REPL_OWNER', '')
-            if repl_slug and repl_owner:
-                constructed_url = f"https://{repl_slug}.{repl_owner}.repl.co"
-                print(f"🌐 Project URL: {constructed_url}")
-            else:
-                print("🌐 URL: Not available in this environment")
-        
-        if BOT_TOKEN == 'your_bot_token_here' or ADMIN_ID == 0:
-            print("WARNING: Please set BOT_TOKEN and ADMIN_ID environment variables!")
-            print("BOT_TOKEN: Your Telegram bot token from @BotFather")
-            print("ADMIN_ID: Your Telegram user ID (numeric)")
-        
-        # Delete webhook if exists to fix polling conflicts
-        try:
-            bot.delete_webhook()
-            print("Webhook deleted successfully")
-        except Exception as e:
-            print(f"Note: Could not delete webhook: {e}")
-        
-        print("Bot is running... Press Ctrl+C to stop")
-        bot.polling(none_stop=True, interval=1, timeout=60)
-        
-    except KeyboardInterrupt:
-        print("\nBot stopped by user")
     except Exception as e:
-        print(f"Critical error occurred: {e}")
-        print("Bot will attempt to restart...")
-        # In a production environment, you might want to implement
-        # automatic restart logic here
+        print(f"Error setting webhook: {e}")
+        print("The bot will not receive updates. Please check your environment variables.")
