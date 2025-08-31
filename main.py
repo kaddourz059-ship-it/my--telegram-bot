@@ -101,8 +101,6 @@ def handle_voice_message(message):
             sent_count += 1
             print(f"Successfully sent voice broadcast to user {user_id}")
         except Exception as e:
-
-Zaki Kd, [31-08-2025 9:33]
 failed_count += 1
             if "bot was blocked by the user" in str(e).lower():
                 print(f"User {user_id} has blocked the bot")
@@ -188,8 +186,6 @@ def handle_info_command(message):
         bot.reply_to(message, info_message)
     else:
         bot.reply_to(message, "هذا الأمر متاح للمدير فقط.")
-
-Zaki Kd, [31-08-2025 9:33]
 # 13. Set webhook for Render deployment
 if name == 'main':
     bot.delete_webhook() # Remove any existing webhook
